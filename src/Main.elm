@@ -15,10 +15,7 @@ run : Rope String
 run =
     let
         ( game, initialLogs ) =
-            Game.init
-                |> andThen (Game.add "Chet")
-                |> andThen (Game.add "Pat")
-                |> andThen (Game.add "Sue")
+            Game.init "Chet" [ "Pat", "Sue" ]
     in
     go game initialLogs (Random.initialSeed 0)
 
@@ -65,12 +62,3 @@ view games =
 
 
 -- This part is used to collect the logs, you can ignore it
-
-
-andThen : (a -> ( b, Rope String )) -> ( a, Rope String ) -> ( b, Rope String )
-andThen f ( x, xlog ) =
-    let
-        ( fx, fxlog ) =
-            f x
-    in
-    ( fx, Rope.appendTo xlog fxlog )

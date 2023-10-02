@@ -1,16 +1,16 @@
-module Game exposing (Game, Player, add, init, roll, wasCorrectlyAnswered, wrongAnswer)
+module Game exposing (Game, Player, init, roll, wasCorrectlyAnswered, wrongAnswer)
 
-import Array exposing (Array)
+import Deque exposing (Deque)
 import Rope exposing (Rope)
 
 
 type alias Game =
-    { players : Array Player
+    { currentPlayer : Player
+    , playersQueue : Deque Player
     , popQuestions : List String
     , scienceQuestions : List String
     , sportsQuestions : List String
     , rockQuestions : List String
-    , currentPlayer : Int
     , isGettingOutOfPenaltyBox : Bool
     }
 
@@ -23,18 +23,38 @@ type alias Player =
     }
 
 
-init : ( Game, Rope String )
-init =
-    ( { players = Array.empty
+{-| Initialize a game. Requires the name of the first player and of the other players.
+-}
+init : String -> List String -> ( Game, Rope String )
+init firstPlayer otherPlayers =
+    ( { currentPlayer = toPlayer firstPlayer
+      , playersQueue = Deque.fromList <| List.map toPlayer otherPlayers
       , popQuestions = createQuestions "Pop"
       , scienceQuestions = createQuestions "Science"
       , sportsQuestions = createQuestions "Sports"
       , rockQuestions = createQuestions "Rock"
-      , currentPlayer = 0
       , isGettingOutOfPenaltyBox = False
       }
-    , Rope.empty
+    , (firstPlayer :: otherPlayers)
+        |> List.indexedMap
+            (\index playerName ->
+                Rope.fromList
+                    [ playerName ++ " was added"
+                    , "They are player number " ++ String.fromInt (index + 1)
+                    ]
+            )
+        |> Rope.fromList
+        |> Rope.concat
     )
+
+
+toPlayer : String -> Player
+toPlayer playerName =
+    { name = playerName
+    , place = 0
+    , purse = 0
+    , inPenaltyBox = False
+    }
 
 
 createQuestions : String -> List String
@@ -48,130 +68,72 @@ createQuestion category i =
     category ++ " Question " ++ String.fromInt i
 
 
-add : String -> Game -> ( Game, Rope String )
-add playerName this =
-    let
-        newGame : Game
-        newGame =
-            { this
-                | players =
-                    Array.push
-                        { name = playerName
-                        , place = 0
-                        , purse = 0
-                        , inPenaltyBox = False
-                        }
-                        this.players
-            }
-    in
-    ( newGame
-    , Rope.fromList
-        [ playerName ++ " was added"
-        , "They are player number " ++ String.fromInt (Array.length newGame.players)
-        ]
-    )
-
-
 roll : Int -> Game -> ( Game, Rope String )
 roll roll_ this =
     let
         initialLogs : Rope String
         initialLogs =
-            [ currentPlayer.name ++ " is the current player"
+            [ this.currentPlayer.name ++ " is the current player"
             , "They have rolled a " ++ String.fromInt roll_
             ]
                 |> Rope.fromList
+    in
+    if this.currentPlayer.inPenaltyBox && modBy 2 roll_ == 0 then
+        ( { this
+            | isGettingOutOfPenaltyBox = False
+          }
+        , initialLogs
+            |> Rope.append (this.currentPlayer.name ++ " is not getting out of the penalty box")
+        )
 
-        ( next, logs ) =
-            if currentPlayer.inPenaltyBox then
-                if modBy 2 roll_ /= 0 then
-                    let
-                        next_ : Game
-                        next_ =
-                            { this
-                                | isGettingOutOfPenaltyBox = True
-                            }
+    else
+        let
+            currentPlayer : Player
+            currentPlayer =
+                this.currentPlayer
 
-                        nextPlayer : Player
-                        nextPlayer =
-                            { currentPlayer
-                                | place = currentPlayer.place + roll_
-                                , inPenaltyBox = False
-                            }
+            advance : Player
+            advance =
+                { currentPlayer
+                    | place = newPlace
+                    , inPenaltyBox = False
+                }
 
-                        nextPlayer_ : Player
-                        nextPlayer_ =
-                            if nextPlayer.place > 11 then
-                                { nextPlayer | place = nextPlayer.place - 12 }
+            ( afterQuestion, askLogs ) =
+                askQuestion
+                    { this
+                        | currentPlayer = advance
+                    }
 
-                            else
-                                nextPlayer
+            commonMessages : List String
+            commonMessages =
+                [ currentPlayer.name
+                    ++ "'s new location is "
+                    ++ String.fromInt newPlace
+                , "The category is " ++ currentCategory this
+                ]
 
-                        next__ : Game
-                        next__ =
-                            { next_
-                                | players = Array.set this.currentPlayer nextPlayer_ this.players
-                            }
-
-                        ( next___, askLogs ) =
-                            askQuestion next__
-                    in
-                    ( next___
-                    , [ currentPlayer.name ++ " is getting out of the penalty box"
-                      , currentPlayer.name ++ "'s new location is " ++ String.fromInt nextPlayer_.place
-                      , "The category is " ++ currentCategory next__
-                      ]
-                        |> Rope.fromList
-                        |> Rope.prependTo askLogs
+            ( messages, next ) =
+                if currentPlayer.inPenaltyBox then
+                    ( (currentPlayer.name ++ " is getting out of the penalty box")
+                        :: commonMessages
+                    , { afterQuestion | isGettingOutOfPenaltyBox = True }
                     )
 
                 else
-                    ( { this
-                        | isGettingOutOfPenaltyBox = False
-                      }
-                    , (currentPlayer.name ++ " is not getting out of the penalty box")
-                        |> Rope.singleton
-                    )
+                    ( commonMessages, afterQuestion )
 
-            else
-                let
-                    nextPlayer : Player
-                    nextPlayer =
-                        { currentPlayer
-                            | place = currentPlayer.place + roll_
-                            , inPenaltyBox = False
-                        }
-
-                    nextPlayer_ : Player
-                    nextPlayer_ =
-                        if nextPlayer.place > 11 then
-                            { nextPlayer | place = nextPlayer.place - 12 }
-
-                        else
-                            nextPlayer
-
-                    next__ : Game
-                    next__ =
-                        { this
-                            | players = Array.set this.currentPlayer nextPlayer_ this.players
-                        }
-
-                    ( next___, askLogs ) =
-                        askQuestion next__
-                in
-                ( next___
-                , [ currentPlayer.name ++ "'s new location is " ++ String.fromInt nextPlayer_.place
-                  , "The category is " ++ currentCategory next__
-                  ]
-                    |> Rope.fromList
-                    |> Rope.prependTo askLogs
-                )
-
-        currentPlayer : Player
-        currentPlayer =
-            getUnsafe this.players this.currentPlayer
-    in
-    ( next, Rope.appendTo initialLogs logs )
+            newPlace : Int
+            newPlace =
+                (currentPlayer.place + roll_)
+                    |> modBy 12
+        in
+        ( next
+        , messages
+            |> Rope.fromList
+            |> Rope.prependTo askLogs
+            |> Rope.appendTo initialLogs
+        )
 
 
 askQuestion : Game -> ( Game, Rope String )
@@ -215,12 +177,7 @@ askQuestion game =
 
 currentCategory : Game -> String
 currentCategory this =
-    let
-        currentPlace : Int
-        currentPlace =
-            (getUnsafe this.players this.currentPlayer).place
-    in
-    case modBy 4 currentPlace of
+    case modBy 4 this.currentPlayer.place of
         0 ->
             "Pop"
 
@@ -236,75 +193,11 @@ currentCategory this =
 
 wasCorrectlyAnswered : Game -> ( Bool, Game, Rope String )
 wasCorrectlyAnswered this =
-    if (getUnsafe this.players this.currentPlayer).inPenaltyBox then
-        if this.isGettingOutOfPenaltyBox then
-            let
-                currentPlayer : Player
-                currentPlayer =
-                    getUnsafe this.players this.currentPlayer
-
-                nextPlayer : Player
-                nextPlayer =
-                    { currentPlayer | purse = currentPlayer.purse + 1 }
-
-                next : Game
-                next =
-                    { this
-                        | players = Array.set this.currentPlayer nextPlayer this.players
-                    }
-
-                winner : Bool
-                winner =
-                    didPlayerWin next
-
-                next_ : Game
-                next_ =
-                    { next
-                        | currentPlayer = next.currentPlayer + 1
-                    }
-
-                next__ : Game
-                next__ =
-                    if next_.currentPlayer == Array.length next_.players then
-                        { next_ | currentPlayer = 0 }
-
-                    else
-                        next_
-            in
-            ( winner
-            , next__
-            , [ "Answer was corrent!!!!"
-              , nextPlayer.name ++ " now has " ++ String.fromInt nextPlayer.purse ++ " Gold Coins."
-              ]
-                |> Rope.fromList
-            )
-
-        else
-            let
-                next : Game
-                next =
-                    { this
-                        | currentPlayer = this.currentPlayer + 1
-                    }
-
-                next_ : Game
-                next_ =
-                    if next.currentPlayer == Array.length next.players then
-                        { next | currentPlayer = 0 }
-
-                    else
-                        next
-            in
-            ( True
-            , next_
-            , Rope.empty
-            )
-
-    else
+    if not this.currentPlayer.inPenaltyBox || this.isGettingOutOfPenaltyBox then
         let
             currentPlayer : Player
             currentPlayer =
-                getUnsafe this.players this.currentPlayer
+                this.currentPlayer
 
             nextPlayer : Player
             nextPlayer =
@@ -313,34 +206,35 @@ wasCorrectlyAnswered this =
             next : Game
             next =
                 { this
-                    | players = Array.set this.currentPlayer nextPlayer this.players
+                    | currentPlayer = nextPlayer
                 }
-
-            winner : Bool
-            winner =
-                didPlayerWin next
-
-            next_ : Game
-            next_ =
-                { next
-                    | currentPlayer = next.currentPlayer + 1
-                }
-
-            next__ : Game
-            next__ =
-                if next_.currentPlayer == Array.length next_.players then
-                    { next_ | currentPlayer = 0 }
-
-                else
-                    next_
         in
-        ( winner
-        , next__
+        ( not <| didPlayerWin next
+        , rotatePlayers next
         , [ "Answer was corrent!!!!"
-          , nextPlayer.name ++ " now has " ++ String.fromInt nextPlayer.purse ++ " Gold Coins."
+          , currentPlayer.name ++ " now has " ++ String.fromInt nextPlayer.purse ++ " Gold Coins."
           ]
             |> Rope.fromList
         )
+
+    else
+        ( True
+        , rotatePlayers this
+        , Rope.empty
+        )
+
+
+rotatePlayers : Game -> Game
+rotatePlayers next =
+    case Deque.popFront next.playersQueue of
+        ( Nothing, _ ) ->
+            next
+
+        ( Just front, newQueue ) ->
+            { next
+                | currentPlayer = front
+                , playersQueue = Deque.pushBack next.currentPlayer newQueue
+            }
 
 
 wrongAnswer : Game -> ( Bool, Game, Rope String )
@@ -348,7 +242,7 @@ wrongAnswer this =
     let
         currentPlayer : Player
         currentPlayer =
-            getUnsafe this.players this.currentPlayer
+            this.currentPlayer
 
         nextPlayer : Player
         nextPlayer =
@@ -356,18 +250,11 @@ wrongAnswer this =
 
         next : Game
         next =
-            { this
-                | currentPlayer = this.currentPlayer + 1
-                , players = Array.set this.currentPlayer nextPlayer this.players
-            }
+            rotatePlayers { this | currentPlayer = nextPlayer }
 
         next_ : Game
         next_ =
-            if next.currentPlayer == Array.length next.players then
-                { next | currentPlayer = 0 }
-
-            else
-                next
+            next
     in
     ( True
     , next_
@@ -380,19 +267,4 @@ wrongAnswer this =
 
 didPlayerWin : Game -> Bool
 didPlayerWin this =
-    (getUnsafe this.players this.currentPlayer).purse /= 6
-
-
-
--- Utilities to make the Array API more like imperative code
--- You _should_ clean these up
-
-
-getUnsafe : Array a -> Int -> a
-getUnsafe arr index =
-    case Array.get index arr of
-        Nothing ->
-            Debug.todo <| "Out of boundary: " ++ String.fromInt index ++ " out of " ++ String.fromInt (Array.length arr)
-
-        Just e ->
-            e
+    this.currentPlayer.purse == 6
