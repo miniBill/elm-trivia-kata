@@ -9,10 +9,10 @@ type alias Game =
     , places : Array Int
     , purses : Array Int
     , inPenaltyBox : Array Bool
-    , popQuestions : Array String
-    , scienceQuestions : Array String
-    , sportsQuestions : Array String
-    , rockQuestions : Array String
+    , popQuestions : List String
+    , scienceQuestions : List String
+    , sportsQuestions : List String
+    , rockQuestions : List String
     , currentPlayer : Int
     , isGettingOutOfPenaltyBox : Bool
     }
@@ -20,34 +20,30 @@ type alias Game =
 
 init : ( Game, Rope String )
 init =
-    ( List.range 0 49
-        |> List.foldl
-            (\i this ->
-                { this
-                    | popQuestions = Array.push ("Pop Question " ++ String.fromInt i) this.popQuestions
-                    , scienceQuestions = Array.push ("Science Question " ++ String.fromInt i) this.scienceQuestions
-                    , sportsQuestions = Array.push ("Sports Question " ++ String.fromInt i) this.sportsQuestions
-                    , rockQuestions = Array.push (createRockQuestion i) this.rockQuestions
-                }
-            )
-            { players = Array.empty
-            , places = Array.repeat 6 0
-            , purses = Array.repeat 6 0
-            , inPenaltyBox = Array.repeat 6 False
-            , popQuestions = Array.empty
-            , scienceQuestions = Array.empty
-            , sportsQuestions = Array.empty
-            , rockQuestions = Array.empty
-            , currentPlayer = 0
-            , isGettingOutOfPenaltyBox = False
-            }
+    ( { players = Array.empty
+      , places = Array.repeat 6 0
+      , purses = Array.repeat 6 0
+      , inPenaltyBox = Array.repeat 6 False
+      , popQuestions = createQuestions "Pop"
+      , scienceQuestions = createQuestions "Science"
+      , sportsQuestions = createQuestions "Sports"
+      , rockQuestions = createQuestions "Rock"
+      , currentPlayer = 0
+      , isGettingOutOfPenaltyBox = False
+      }
     , Rope.empty
     )
 
 
-createRockQuestion : Int -> String
-createRockQuestion i =
-    "Rock Question " ++ String.fromInt i
+createQuestions : String -> List String
+createQuestions category =
+    List.range 0 49
+        |> List.map (createQuestion category)
+
+
+createQuestion : String -> Int -> String
+createQuestion category i =
+    category ++ " Question " ++ String.fromInt i
 
 
 add : String -> Game -> ( Game, Rope String )
@@ -161,7 +157,7 @@ askQuestion game =
         ( popNext, popLogs ) =
             if currentCategory game == "Pop" then
                 ( { game | popQuestions = removeFirst game.popQuestions }
-                , Array.get 0 game.popQuestions
+                , List.head game.popQuestions
                     |> Maybe.withDefault "--- out of Pop questions ---"
                     |> Rope.singleton
                 )
@@ -172,7 +168,7 @@ askQuestion game =
         ( scienceNext, scienceLogs ) =
             if currentCategory popNext == "Science" then
                 ( { popNext | scienceQuestions = removeFirst popNext.scienceQuestions }
-                , Array.get 0 popNext.scienceQuestions
+                , List.head popNext.scienceQuestions
                     |> Maybe.withDefault "--- out of Science questions ---"
                     |> Rope.singleton
                 )
@@ -183,7 +179,7 @@ askQuestion game =
         ( sportsNext, sportsLogs ) =
             if currentCategory scienceNext == "Sports" then
                 ( { scienceNext | sportsQuestions = removeFirst scienceNext.sportsQuestions }
-                , Array.get 0 scienceNext.sportsQuestions
+                , List.head scienceNext.sportsQuestions
                     |> Maybe.withDefault "--- out of Sports questions ---"
                     |> Rope.singleton
                 )
@@ -194,7 +190,7 @@ askQuestion game =
         ( rockNext, rockLogs ) =
             if currentCategory sportsNext == "Rock" then
                 ( { sportsNext | rockQuestions = removeFirst sportsNext.rockQuestions }
-                , Array.get 0 sportsNext.rockQuestions
+                , List.head sportsNext.rockQuestions
                     |> Maybe.withDefault "--- out of Rock questions ---"
                     |> Rope.singleton
                 )
@@ -368,9 +364,9 @@ didPlayerWin this =
 -- You _should_ clean these up
 
 
-removeFirst : Array a -> Array a
-removeFirst array =
-    Array.slice 1 (Array.length array) array
+removeFirst : List a -> List a
+removeFirst =
+    List.drop 1
 
 
 getUnsafe : Array a -> Int -> a
