@@ -32,7 +32,7 @@ go game queue seed =
         ( game_, rollLogs ) =
             Game.roll (upToFive + 1) game
 
-        ( notAWinner, nextGame, answerLogs ) =
+        ( playerWon, nextGame, answerLogs ) =
             if upToEight == 7 then
                 Game.wrongAnswer game_
 
@@ -45,11 +45,11 @@ go game queue seed =
                 (Rope.appendTo queue rollLogs)
                 answerLogs
     in
-    if notAWinner then
-        go nextGame nextQueue nextSeed
+    if playerWon then
+        nextQueue
 
     else
-        nextQueue
+        go nextGame nextQueue nextSeed
 
 
 view : Rope String -> Html msg

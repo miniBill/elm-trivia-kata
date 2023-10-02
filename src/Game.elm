@@ -228,7 +228,7 @@ wasCorrectlyAnswered game =
                     | currentPlayer = nextPlayer
                 }
         in
-        ( not <| didPlayerWin next
+        ( didPlayerWin next
         , rotatePlayers next
         , [ "Answer was corrent!!!!"
           , currentPlayer.name ++ " now has " ++ String.fromInt nextPlayer.purse ++ " Gold Coins."
@@ -237,7 +237,7 @@ wasCorrectlyAnswered game =
         )
 
     else
-        ( True
+        ( False
         , rotatePlayers game
         , Rope.empty
         )
@@ -263,7 +263,7 @@ wrongAnswer ({ currentPlayer } as game) =
         nextPlayer =
             { currentPlayer | inPenaltyBox = True }
     in
-    ( True
+    ( False
     , rotatePlayers { game | currentPlayer = nextPlayer }
     , [ "Question was incorrectly answered"
       , currentPlayer.name ++ " was sent to the penalty box"
