@@ -96,6 +96,7 @@ roll roll_ this =
                             { this
                                 | isGettingOutOfPenaltyBox = True
                                 , places = Array.set this.currentPlayer (getUnsafe this.places this.currentPlayer + roll_) this.places
+                                , inPenaltyBox = Array.set this.currentPlayer False this.inPenaltyBox
                             }
 
                         next__ =
