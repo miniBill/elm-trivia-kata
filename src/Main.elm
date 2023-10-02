@@ -42,18 +42,19 @@ go game queue seed =
             else
                 Game.wasCorrectlyAnswered game_
 
-        nextGame =
-            game__
-
         nextQueue =
             Rope.appendTo
                 (Rope.appendTo queue rollLogs)
                 answerLogs
-
-        nextSeed =
-            seed__
     in
     if notAWinner then
+        let
+            nextGame =
+                game__
+
+            nextSeed =
+                seed__
+        in
         go nextGame nextQueue nextSeed
 
     else

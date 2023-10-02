@@ -50,14 +50,10 @@ createRockQuestion i =
     "Rock Question " ++ String.fromInt i
 
 
-isPlayable : Game -> Bool
-isPlayable this =
-    howManyPlayers this >= 2
-
-
 add : String -> Game -> ( Game, Rope String )
 add playerName this =
     let
+        newGame : Game
         newGame =
             { this
                 | players = Array.push playerName this.players
@@ -82,6 +78,7 @@ howManyPlayers game =
 roll : Int -> Game -> ( Game, Rope String )
 roll roll_ this =
     let
+        initialLogs : Rope String
         initialLogs =
             [ getUnsafe this.players this.currentPlayer ++ " is the current player"
             , "They have rolled a " ++ String.fromInt roll_
@@ -92,6 +89,7 @@ roll roll_ this =
             if getUnsafe this.inPenaltyBox this.currentPlayer then
                 if modBy 2 roll_ /= 0 then
                     let
+                        next_ : Game
                         next_ =
                             { this
                                 | isGettingOutOfPenaltyBox = True
@@ -99,6 +97,7 @@ roll roll_ this =
                                 , inPenaltyBox = Array.set this.currentPlayer False this.inPenaltyBox
                             }
 
+                        next__ : Game
                         next__ =
                             if getUnsafe next_.places this.currentPlayer > 11 then
                                 { next_ | places = Array.set this.currentPlayer (getUnsafe next_.places this.currentPlayer - 12) next_.places }
@@ -128,11 +127,13 @@ roll roll_ this =
 
             else
                 let
+                    next_ : Game
                     next_ =
                         { this
                             | places = Array.set this.currentPlayer (getUnsafe this.places this.currentPlayer + roll_) this.places
                         }
 
+                    next__ : Game
                     next__ =
                         if getUnsafe next_.places this.currentPlayer > 11 then
                             { next_ | places = Array.set this.currentPlayer (getUnsafe next_.places this.currentPlayer - 12) next_.places }
@@ -246,17 +247,21 @@ wasCorrectlyAnswered this =
     if getUnsafe this.inPenaltyBox this.currentPlayer then
         if this.isGettingOutOfPenaltyBox then
             let
+                next : Game
                 next =
                     { this | purses = Array.set this.currentPlayer (getUnsafe this.purses this.currentPlayer + 1) this.purses }
 
+                winner : Bool
                 winner =
                     didPlayerWin next
 
+                next_ : Game
                 next_ =
                     { next
                         | currentPlayer = next.currentPlayer + 1
                     }
 
+                next__ : Game
                 next__ =
                     if next_.currentPlayer == Array.length next_.players then
                         { next_ | currentPlayer = 0 }
@@ -274,11 +279,13 @@ wasCorrectlyAnswered this =
 
         else
             let
+                next : Game
                 next =
                     { this
                         | currentPlayer = this.currentPlayer + 1
                     }
 
+                next_ : Game
                 next_ =
                     if next.currentPlayer == Array.length next.players then
                         { next | currentPlayer = 0 }
@@ -293,17 +300,21 @@ wasCorrectlyAnswered this =
 
     else
         let
+            next : Game
             next =
                 { this | purses = Array.set this.currentPlayer (getUnsafe this.purses this.currentPlayer + 1) this.purses }
 
+            winner : Bool
             winner =
                 didPlayerWin next
 
+            next_ : Game
             next_ =
                 { next
                     | currentPlayer = next.currentPlayer + 1
                 }
 
+            next__ : Game
             next__ =
                 if next_.currentPlayer == Array.length next_.players then
                     { next_ | currentPlayer = 0 }
@@ -323,12 +334,14 @@ wasCorrectlyAnswered this =
 wrongAnswer : Game -> ( Bool, Game, Rope String )
 wrongAnswer this =
     let
+        next : Game
         next =
             { this
                 | inPenaltyBox = Array.set this.currentPlayer True this.inPenaltyBox
                 , currentPlayer = this.currentPlayer + 1
             }
 
+        next_ : Game
         next_ =
             if next.currentPlayer == Array.length next.players then
                 { next | currentPlayer = 0 }
@@ -347,7 +360,7 @@ wrongAnswer this =
 
 didPlayerWin : Game -> Bool
 didPlayerWin this =
-    not (getUnsafe this.purses this.currentPlayer == 6)
+    getUnsafe this.purses this.currentPlayer /= 6
 
 
 
