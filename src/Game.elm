@@ -154,88 +154,61 @@ roll roll_ this =
 askQuestion : Game -> ( Game, Rope String )
 askQuestion game =
     let
-        ( popNext, popLogs ) =
-            if currentCategory game == "Pop" then
-                ( { game | popQuestions = removeFirst game.popQuestions }
-                , List.head game.popQuestions
-                    |> Maybe.withDefault "--- out of Pop questions ---"
-                    |> Rope.singleton
-                )
+        category : String
+        category =
+            currentCategory game
 
-            else
-                ( game, Rope.empty )
-
-        ( scienceNext, scienceLogs ) =
-            if currentCategory popNext == "Science" then
-                ( { popNext | scienceQuestions = removeFirst popNext.scienceQuestions }
-                , List.head popNext.scienceQuestions
-                    |> Maybe.withDefault "--- out of Science questions ---"
-                    |> Rope.singleton
-                )
-
-            else
-                ( popNext, Rope.empty )
-
-        ( sportsNext, sportsLogs ) =
-            if currentCategory scienceNext == "Sports" then
-                ( { scienceNext | sportsQuestions = removeFirst scienceNext.sportsQuestions }
-                , List.head scienceNext.sportsQuestions
-                    |> Maybe.withDefault "--- out of Sports questions ---"
-                    |> Rope.singleton
-                )
-
-            else
-                ( scienceNext, Rope.empty )
-
-        ( rockNext, rockLogs ) =
-            if currentCategory sportsNext == "Rock" then
-                ( { sportsNext | rockQuestions = removeFirst sportsNext.rockQuestions }
-                , List.head sportsNext.rockQuestions
-                    |> Maybe.withDefault "--- out of Rock questions ---"
-                    |> Rope.singleton
-                )
-
-            else
-                ( sportsNext, Rope.empty )
+        pop : List String -> Rope String
+        pop questions =
+            questions
+                |> List.head
+                |> Maybe.withDefault ("--- out of " ++ category ++ " questions ---")
+                |> Rope.singleton
     in
-    ( rockNext
-    , Rope.appendTo
-        (Rope.appendTo popLogs scienceLogs)
-        (Rope.appendTo sportsLogs rockLogs)
-    )
+    case category of
+        "Rock" ->
+            ( { game | rockQuestions = List.drop 1 game.rockQuestions }
+            , pop game.rockQuestions
+            )
+
+        "Sports" ->
+            ( { game | sportsQuestions = List.drop 1 game.sportsQuestions }
+            , pop game.sportsQuestions
+            )
+
+        "Science" ->
+            ( { game | scienceQuestions = List.drop 1 game.scienceQuestions }
+            , pop game.scienceQuestions
+            )
+
+        "Pop" ->
+            ( { game | popQuestions = List.drop 1 game.popQuestions }
+            , pop game.popQuestions
+            )
+
+        _ ->
+            ( game, Rope.empty )
 
 
 currentCategory : Game -> String
 currentCategory this =
-    if getUnsafe this.places this.currentPlayer == 0 then
-        "Pop"
+    let
+        currentPlace : Int
+        currentPlace =
+            getUnsafe this.places this.currentPlayer
+    in
+    case modBy 4 currentPlace of
+        0 ->
+            "Pop"
 
-    else if getUnsafe this.places this.currentPlayer == 4 then
-        "Pop"
+        1 ->
+            "Science"
 
-    else if getUnsafe this.places this.currentPlayer == 8 then
-        "Pop"
+        2 ->
+            "Sports"
 
-    else if getUnsafe this.places this.currentPlayer == 1 then
-        "Science"
-
-    else if getUnsafe this.places this.currentPlayer == 5 then
-        "Science"
-
-    else if getUnsafe this.places this.currentPlayer == 9 then
-        "Science"
-
-    else if getUnsafe this.places this.currentPlayer == 2 then
-        "Sports"
-
-    else if getUnsafe this.places this.currentPlayer == 6 then
-        "Sports"
-
-    else if getUnsafe this.places this.currentPlayer == 10 then
-        "Sports"
-
-    else
-        "Rock"
+        _ ->
+            "Rock"
 
 
 wasCorrectlyAnswered : Game -> ( Bool, Game, Rope String )
@@ -362,11 +335,6 @@ didPlayerWin this =
 
 -- Utilities to make the Array API more like imperative code
 -- You _should_ clean these up
-
-
-removeFirst : List a -> List a
-removeFirst =
-    List.drop 1
 
 
 getUnsafe : Array a -> Int -> a
