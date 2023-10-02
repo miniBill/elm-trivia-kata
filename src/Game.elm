@@ -23,6 +23,13 @@ type alias Player =
     }
 
 
+type Category
+    = Rock
+    | Sports
+    | Science
+    | Pop
+
+
 {-| Initialize a game. Requires the name of the first player and of the other players.
 -}
 init : String -> List String -> ( Game, Rope String )
@@ -104,7 +111,7 @@ roll roll_ this =
                     , inPenaltyBox = False
                 }
 
-            category : String
+            category : Category
             category =
                 categoryForPlayer playerAfterMove
 
@@ -116,7 +123,7 @@ roll roll_ this =
                 [ currentPlayer.name
                     ++ "'s new location is "
                     ++ String.fromInt newPlace
-                , "The category is " ++ category
+                , "The category is " ++ categoryToString category
                 ]
 
             messages : List String
@@ -139,55 +146,68 @@ roll roll_ this =
         )
 
 
-askQuestionInCategory : String -> Game -> ( Game, Rope String )
+askQuestionInCategory : Category -> Game -> ( Game, Rope String )
 askQuestionInCategory category game =
     let
         pop : List String -> Rope String
         pop questions =
             questions
                 |> List.head
-                |> Maybe.withDefault ("--- out of " ++ category ++ " questions ---")
+                |> Maybe.withDefault ("--- out of " ++ categoryToString category ++ " questions ---")
                 |> Rope.singleton
     in
     case category of
-        "Rock" ->
+        Rock ->
             ( { game | rockQuestions = List.drop 1 game.rockQuestions }
             , pop game.rockQuestions
             )
 
-        "Sports" ->
+        Sports ->
             ( { game | sportsQuestions = List.drop 1 game.sportsQuestions }
             , pop game.sportsQuestions
             )
 
-        "Science" ->
+        Science ->
             ( { game | scienceQuestions = List.drop 1 game.scienceQuestions }
             , pop game.scienceQuestions
             )
 
-        "Pop" ->
+        Pop ->
             ( { game | popQuestions = List.drop 1 game.popQuestions }
             , pop game.popQuestions
             )
 
-        _ ->
-            ( game, Rope.empty )
+
+categoryToString : Category -> String
+categoryToString category =
+    case category of
+        Rock ->
+            "Rock"
+
+        Sports ->
+            "Sports"
+
+        Science ->
+            "Science"
+
+        Pop ->
+            "Pop"
 
 
-categoryForPlayer : Player -> String
+categoryForPlayer : Player -> Category
 categoryForPlayer currentPlayer =
     case modBy 4 currentPlayer.place of
         0 ->
-            "Pop"
+            Pop
 
         1 ->
-            "Science"
+            Science
 
         2 ->
-            "Sports"
+            Sports
 
         _ ->
-            "Rock"
+            Rock
 
 
 wasCorrectlyAnswered : Game -> ( Bool, Game, Rope String )
