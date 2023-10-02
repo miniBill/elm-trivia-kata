@@ -92,43 +92,46 @@ roll roll_ this =
             currentPlayer =
                 this.currentPlayer
 
-            advance : Player
-            advance =
+            newPlace : Int
+            newPlace =
+                (currentPlayer.place + roll_)
+                    |> modBy 12
+
+            playerAfterMove : Player
+            playerAfterMove =
                 { currentPlayer
                     | place = newPlace
                     , inPenaltyBox = False
                 }
 
+            category : String
+            category =
+                categoryForPlayer playerAfterMove
+
             ( afterQuestion, askLogs ) =
-                askQuestion
-                    { this
-                        | currentPlayer = advance
-                    }
+                askQuestionInCategory category this
 
             commonMessages : List String
             commonMessages =
                 [ currentPlayer.name
                     ++ "'s new location is "
                     ++ String.fromInt newPlace
-                , "The category is " ++ currentCategory this
+                , "The category is " ++ category
                 ]
 
-            ( messages, next ) =
+            messages : List String
+            messages =
                 if currentPlayer.inPenaltyBox then
-                    ( (currentPlayer.name ++ " is getting out of the penalty box")
+                    (currentPlayer.name ++ " is getting out of the penalty box")
                         :: commonMessages
-                    , { afterQuestion | isGettingOutOfPenaltyBox = True }
-                    )
 
                 else
-                    ( commonMessages, afterQuestion )
-
-            newPlace : Int
-            newPlace =
-                (currentPlayer.place + roll_)
-                    |> modBy 12
+                    commonMessages
         in
-        ( next
+        ( { afterQuestion
+            | isGettingOutOfPenaltyBox = True
+            , currentPlayer = playerAfterMove
+          }
         , messages
             |> Rope.fromList
             |> Rope.prependTo askLogs
@@ -136,13 +139,9 @@ roll roll_ this =
         )
 
 
-askQuestion : Game -> ( Game, Rope String )
-askQuestion game =
+askQuestionInCategory : String -> Game -> ( Game, Rope String )
+askQuestionInCategory category game =
     let
-        category : String
-        category =
-            currentCategory game
-
         pop : List String -> Rope String
         pop questions =
             questions
@@ -175,9 +174,9 @@ askQuestion game =
             ( game, Rope.empty )
 
 
-currentCategory : Game -> String
-currentCategory this =
-    case modBy 4 this.currentPlayer.place of
+categoryForPlayer : Player -> String
+categoryForPlayer currentPlayer =
+    case modBy 4 currentPlayer.place of
         0 ->
             "Pop"
 
