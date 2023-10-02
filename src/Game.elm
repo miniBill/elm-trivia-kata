@@ -1,14 +1,11 @@
-module Game exposing (Game, add, init, roll, wasCorrectlyAnswered, wrongAnswer)
+module Game exposing (Game, Player, add, init, roll, wasCorrectlyAnswered, wrongAnswer)
 
 import Array exposing (Array)
 import Rope exposing (Rope)
 
 
 type alias Game =
-    { players : Array String
-    , places : Array Int
-    , purses : Array Int
-    , inPenaltyBox : Array Bool
+    { players : Array Player
     , popQuestions : List String
     , scienceQuestions : List String
     , sportsQuestions : List String
@@ -18,12 +15,17 @@ type alias Game =
     }
 
 
+type alias Player =
+    { name : String
+    , place : Int
+    , purse : Int
+    , inPenaltyBox : Bool
+    }
+
+
 init : ( Game, Rope String )
 init =
     ( { players = Array.empty
-      , places = Array.repeat 6 0
-      , purses = Array.repeat 6 0
-      , inPenaltyBox = Array.repeat 6 False
       , popQuestions = createQuestions "Pop"
       , scienceQuestions = createQuestions "Science"
       , sportsQuestions = createQuestions "Sports"
@@ -52,10 +54,14 @@ add playerName this =
         newGame : Game
         newGame =
             { this
-                | players = Array.push playerName this.players
-                , places = Array.set (howManyPlayers this) 0 this.places
-                , purses = Array.set (howManyPlayers this) 0 this.purses
-                , inPenaltyBox = Array.set (howManyPlayers this) False this.inPenaltyBox
+                | players =
+                    Array.push
+                        { name = playerName
+                        , place = 0
+                        , purse = 0
+                        , inPenaltyBox = False
+                        }
+                        this.players
             }
     in
     ( newGame
@@ -66,47 +72,53 @@ add playerName this =
     )
 
 
-howManyPlayers : Game -> Int
-howManyPlayers game =
-    Array.length game.players
-
-
 roll : Int -> Game -> ( Game, Rope String )
 roll roll_ this =
     let
         initialLogs : Rope String
         initialLogs =
-            [ getUnsafe this.players this.currentPlayer ++ " is the current player"
+            [ currentPlayer.name ++ " is the current player"
             , "They have rolled a " ++ String.fromInt roll_
             ]
                 |> Rope.fromList
 
         ( next, logs ) =
-            if getUnsafe this.inPenaltyBox this.currentPlayer then
+            if currentPlayer.inPenaltyBox then
                 if modBy 2 roll_ /= 0 then
                     let
                         next_ : Game
                         next_ =
                             { this
                                 | isGettingOutOfPenaltyBox = True
-                                , places = Array.set this.currentPlayer (getUnsafe this.places this.currentPlayer + roll_) this.places
-                                , inPenaltyBox = Array.set this.currentPlayer False this.inPenaltyBox
                             }
+
+                        nextPlayer : Player
+                        nextPlayer =
+                            { currentPlayer
+                                | place = currentPlayer.place + roll_
+                                , inPenaltyBox = False
+                            }
+
+                        nextPlayer_ : Player
+                        nextPlayer_ =
+                            if nextPlayer.place > 11 then
+                                { nextPlayer | place = nextPlayer.place - 12 }
+
+                            else
+                                nextPlayer
 
                         next__ : Game
                         next__ =
-                            if getUnsafe next_.places this.currentPlayer > 11 then
-                                { next_ | places = Array.set this.currentPlayer (getUnsafe next_.places this.currentPlayer - 12) next_.places }
-
-                            else
-                                next_
+                            { next_
+                                | players = Array.set this.currentPlayer nextPlayer_ this.players
+                            }
 
                         ( next___, askLogs ) =
                             askQuestion next__
                     in
                     ( next___
-                    , [ getUnsafe this.players this.currentPlayer ++ " is getting out of the penalty box"
-                      , getUnsafe next__.players next__.currentPlayer ++ "'s new location is " ++ String.fromInt (getUnsafe next__.places next__.currentPlayer)
+                    , [ currentPlayer.name ++ " is getting out of the penalty box"
+                      , currentPlayer.name ++ "'s new location is " ++ String.fromInt nextPlayer_.place
                       , "The category is " ++ currentCategory next__
                       ]
                         |> Rope.fromList
@@ -117,36 +129,47 @@ roll roll_ this =
                     ( { this
                         | isGettingOutOfPenaltyBox = False
                       }
-                    , (getUnsafe this.players this.currentPlayer ++ " is not getting out of the penalty box")
+                    , (currentPlayer.name ++ " is not getting out of the penalty box")
                         |> Rope.singleton
                     )
 
             else
                 let
-                    next_ : Game
-                    next_ =
-                        { this
-                            | places = Array.set this.currentPlayer (getUnsafe this.places this.currentPlayer + roll_) this.places
+                    nextPlayer : Player
+                    nextPlayer =
+                        { currentPlayer
+                            | place = currentPlayer.place + roll_
+                            , inPenaltyBox = False
                         }
+
+                    nextPlayer_ : Player
+                    nextPlayer_ =
+                        if nextPlayer.place > 11 then
+                            { nextPlayer | place = nextPlayer.place - 12 }
+
+                        else
+                            nextPlayer
 
                     next__ : Game
                     next__ =
-                        if getUnsafe next_.places this.currentPlayer > 11 then
-                            { next_ | places = Array.set this.currentPlayer (getUnsafe next_.places this.currentPlayer - 12) next_.places }
-
-                        else
-                            next_
+                        { this
+                            | players = Array.set this.currentPlayer nextPlayer_ this.players
+                        }
 
                     ( next___, askLogs ) =
                         askQuestion next__
                 in
                 ( next___
-                , [ getUnsafe next__.players next__.currentPlayer ++ "'s new location is " ++ String.fromInt (getUnsafe next__.places next__.currentPlayer)
+                , [ currentPlayer.name ++ "'s new location is " ++ String.fromInt nextPlayer_.place
                   , "The category is " ++ currentCategory next__
                   ]
                     |> Rope.fromList
                     |> Rope.prependTo askLogs
                 )
+
+        currentPlayer : Player
+        currentPlayer =
+            getUnsafe this.players this.currentPlayer
     in
     ( next, Rope.appendTo initialLogs logs )
 
@@ -195,7 +218,7 @@ currentCategory this =
     let
         currentPlace : Int
         currentPlace =
-            getUnsafe this.places this.currentPlayer
+            (getUnsafe this.players this.currentPlayer).place
     in
     case modBy 4 currentPlace of
         0 ->
@@ -213,12 +236,22 @@ currentCategory this =
 
 wasCorrectlyAnswered : Game -> ( Bool, Game, Rope String )
 wasCorrectlyAnswered this =
-    if getUnsafe this.inPenaltyBox this.currentPlayer then
+    if (getUnsafe this.players this.currentPlayer).inPenaltyBox then
         if this.isGettingOutOfPenaltyBox then
             let
+                currentPlayer : Player
+                currentPlayer =
+                    getUnsafe this.players this.currentPlayer
+
+                nextPlayer : Player
+                nextPlayer =
+                    { currentPlayer | purse = currentPlayer.purse + 1 }
+
                 next : Game
                 next =
-                    { this | purses = Array.set this.currentPlayer (getUnsafe this.purses this.currentPlayer + 1) this.purses }
+                    { this
+                        | players = Array.set this.currentPlayer nextPlayer this.players
+                    }
 
                 winner : Bool
                 winner =
@@ -241,7 +274,7 @@ wasCorrectlyAnswered this =
             ( winner
             , next__
             , [ "Answer was corrent!!!!"
-              , getUnsafe next.players next.currentPlayer ++ " now has " ++ String.fromInt (getUnsafe next.purses next.currentPlayer) ++ " Gold Coins."
+              , nextPlayer.name ++ " now has " ++ String.fromInt nextPlayer.purse ++ " Gold Coins."
               ]
                 |> Rope.fromList
             )
@@ -269,9 +302,19 @@ wasCorrectlyAnswered this =
 
     else
         let
+            currentPlayer : Player
+            currentPlayer =
+                getUnsafe this.players this.currentPlayer
+
+            nextPlayer : Player
+            nextPlayer =
+                { currentPlayer | purse = currentPlayer.purse + 1 }
+
             next : Game
             next =
-                { this | purses = Array.set this.currentPlayer (getUnsafe this.purses this.currentPlayer + 1) this.purses }
+                { this
+                    | players = Array.set this.currentPlayer nextPlayer this.players
+                }
 
             winner : Bool
             winner =
@@ -294,7 +337,7 @@ wasCorrectlyAnswered this =
         ( winner
         , next__
         , [ "Answer was corrent!!!!"
-          , getUnsafe next.players next.currentPlayer ++ " now has " ++ String.fromInt (getUnsafe next.purses next.currentPlayer) ++ " Gold Coins."
+          , nextPlayer.name ++ " now has " ++ String.fromInt nextPlayer.purse ++ " Gold Coins."
           ]
             |> Rope.fromList
         )
@@ -303,11 +346,19 @@ wasCorrectlyAnswered this =
 wrongAnswer : Game -> ( Bool, Game, Rope String )
 wrongAnswer this =
     let
+        currentPlayer : Player
+        currentPlayer =
+            getUnsafe this.players this.currentPlayer
+
+        nextPlayer : Player
+        nextPlayer =
+            { currentPlayer | inPenaltyBox = True }
+
         next : Game
         next =
             { this
-                | inPenaltyBox = Array.set this.currentPlayer True this.inPenaltyBox
-                , currentPlayer = this.currentPlayer + 1
+                | currentPlayer = this.currentPlayer + 1
+                , players = Array.set this.currentPlayer nextPlayer this.players
             }
 
         next_ : Game
@@ -321,7 +372,7 @@ wrongAnswer this =
     ( True
     , next_
     , [ "Question was incorrectly answered"
-      , getUnsafe this.players this.currentPlayer ++ " was sent to the penalty box"
+      , currentPlayer.name ++ " was sent to the penalty box"
       ]
         |> Rope.fromList
     )
@@ -329,7 +380,7 @@ wrongAnswer this =
 
 didPlayerWin : Game -> Bool
 didPlayerWin this =
-    getUnsafe this.purses this.currentPlayer /= 6
+    (getUnsafe this.players this.currentPlayer).purse /= 6
 
 
 
