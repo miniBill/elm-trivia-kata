@@ -36,10 +36,10 @@ init : String -> List String -> ( Game, Rope String )
 init firstPlayer otherPlayers =
     ( { currentPlayer = toPlayer firstPlayer
       , playersQueue = Deque.fromList <| List.map toPlayer otherPlayers
-      , popQuestions = createQuestions "Pop"
-      , scienceQuestions = createQuestions "Science"
-      , sportsQuestions = createQuestions "Sports"
-      , rockQuestions = createQuestions "Rock"
+      , popQuestions = createQuestions Pop
+      , scienceQuestions = createQuestions Science
+      , sportsQuestions = createQuestions Sports
+      , rockQuestions = createQuestions Rock
       , isGettingOutOfPenaltyBox = False
       }
     , (firstPlayer :: otherPlayers)
@@ -64,15 +64,15 @@ toPlayer playerName =
     }
 
 
-createQuestions : String -> List String
+createQuestions : Category -> List String
 createQuestions category =
     List.range 0 49
         |> List.map (createQuestion category)
 
 
-createQuestion : String -> Int -> String
+createQuestion : Category -> Int -> String
 createQuestion category i =
-    category ++ " Question " ++ String.fromInt i
+    categoryToString category ++ " Question " ++ String.fromInt i
 
 
 roll : Int -> Game -> ( Game, Rope String )
