@@ -29,32 +29,26 @@ go game queue seed =
         ( upToFive, seed_ ) =
             Random.step (Random.int 1 5) seed
 
-        ( upToEight, seed__ ) =
+        ( upToEight, nextSeed ) =
             Random.step (Random.int 0 8) seed_
 
         ( game_, rollLogs ) =
             Game.roll (upToFive + 1) game
 
-        ( notAWinner, game__, answerLogs ) =
+        ( notAWinner, nextGame, answerLogs ) =
             if upToEight == 7 then
                 Game.wrongAnswer game_
 
             else
                 Game.wasCorrectlyAnswered game_
 
+        nextQueue : Rope String
         nextQueue =
             Rope.appendTo
                 (Rope.appendTo queue rollLogs)
                 answerLogs
     in
     if notAWinner then
-        let
-            nextGame =
-                game__
-
-            nextSeed =
-                seed__
-        in
         go nextGame nextQueue nextSeed
 
     else
