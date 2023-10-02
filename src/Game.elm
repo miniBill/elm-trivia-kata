@@ -76,28 +76,28 @@ createQuestion category i =
 
 
 roll : Int -> Game -> ( Game, Rope String )
-roll roll_ this =
+roll roll_ game =
     let
         initialLogs : Rope String
         initialLogs =
-            [ this.currentPlayer.name ++ " is the current player"
+            [ game.currentPlayer.name ++ " is the current player"
             , "They have rolled a " ++ String.fromInt roll_
             ]
                 |> Rope.fromList
     in
-    if this.currentPlayer.inPenaltyBox && modBy 2 roll_ == 0 then
-        ( { this
+    if game.currentPlayer.inPenaltyBox && modBy 2 roll_ == 0 then
+        ( { game
             | isGettingOutOfPenaltyBox = False
           }
         , initialLogs
-            |> Rope.append (this.currentPlayer.name ++ " is not getting out of the penalty box")
+            |> Rope.append (game.currentPlayer.name ++ " is not getting out of the penalty box")
         )
 
     else
         let
             currentPlayer : Player
             currentPlayer =
-                this.currentPlayer
+                game.currentPlayer
 
             newPlace : Int
             newPlace =
@@ -116,7 +116,7 @@ roll roll_ this =
                 categoryForPlayer playerAfterMove
 
             ( afterQuestion, askLogs ) =
-                askQuestionInCategory category this
+                askQuestionInCategory category game
 
             commonMessages : List String
             commonMessages =
@@ -211,12 +211,12 @@ categoryForPlayer currentPlayer =
 
 
 wasCorrectlyAnswered : Game -> ( Bool, Game, Rope String )
-wasCorrectlyAnswered this =
-    if not this.currentPlayer.inPenaltyBox || this.isGettingOutOfPenaltyBox then
+wasCorrectlyAnswered game =
+    if not game.currentPlayer.inPenaltyBox || game.isGettingOutOfPenaltyBox then
         let
             currentPlayer : Player
             currentPlayer =
-                this.currentPlayer
+                game.currentPlayer
 
             nextPlayer : Player
             nextPlayer =
@@ -224,7 +224,7 @@ wasCorrectlyAnswered this =
 
             next : Game
             next =
-                { this
+                { game
                     | currentPlayer = nextPlayer
                 }
         in
@@ -238,7 +238,7 @@ wasCorrectlyAnswered this =
 
     else
         ( True
-        , rotatePlayers this
+        , rotatePlayers game
         , Rope.empty
         )
 
@@ -257,26 +257,14 @@ rotatePlayers next =
 
 
 wrongAnswer : Game -> ( Bool, Game, Rope String )
-wrongAnswer this =
+wrongAnswer ({ currentPlayer } as game) =
     let
-        currentPlayer : Player
-        currentPlayer =
-            this.currentPlayer
-
         nextPlayer : Player
         nextPlayer =
             { currentPlayer | inPenaltyBox = True }
-
-        next : Game
-        next =
-            rotatePlayers { this | currentPlayer = nextPlayer }
-
-        next_ : Game
-        next_ =
-            next
     in
     ( True
-    , next_
+    , rotatePlayers { game | currentPlayer = nextPlayer }
     , [ "Question was incorrectly answered"
       , currentPlayer.name ++ " was sent to the penalty box"
       ]
@@ -285,5 +273,5 @@ wrongAnswer this =
 
 
 didPlayerWin : Game -> Bool
-didPlayerWin this =
-    this.currentPlayer.purse == 6
+didPlayerWin game =
+    game.currentPlayer.purse == 6
